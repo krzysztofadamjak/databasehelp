@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Generator komend baz danych - rozszerzona wersja</title>
+  <title>Generator komend baz danych - pełny zestaw</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      margin: 20px;
+      margin: 20px auto;
       max-width: 900px;
     }
     label {
@@ -25,7 +25,7 @@
       padding: 8px;
       font-size: 16px;
       margin-bottom: 16px;
-      height: 180px;
+      height: 280px;
     }
     pre {
       background: #f4f4f4;
@@ -33,7 +33,7 @@
       border-radius: 4px;
       font-size: 14px;
       white-space: pre-wrap;
-      max-height: 300px;
+      max-height: 350px;
       overflow-y: auto;
     }
     h2 {
@@ -42,24 +42,27 @@
     h3 {
       margin-top: 30px;
     }
+    small {
+      color: #666;
+    }
   </style>
 </head>
 <body>
 
-<h2>Narzędzie do generowania komend SQL</h2>
+<h2>Narzędzie do generowania komend SQL (pełny zestaw)</h2>
 
 <label for="queryInput">Co chcesz zrobić?</label>
-<input type="text" id="queryInput" placeholder="Np. pobierz dane z tabeli, usuń rekord..." autocomplete="off" />
+<input type="text" id="queryInput" placeholder="Np. usuń tabelę, stwórz indeks..." autocomplete="off" />
 
 <label for="suggestions">Wybierz komendę</label>
-<select id="suggestions" size="10"></select>
+<select id="suggestions" size="15"></select>
 
 <h3>Wybrana komenda wraz z przykładem:</h3>
 <pre id="commandOutput">Wybierz komendę z listy powyżej, aby zobaczyć przykład.</pre>
 
 <script>
   const commands = [
-    // Operacje SELECT
+    // SELECT
     {
       name: "SELECT *",
       description: "Pobierz wszystkie kolumny z tabeli",
@@ -68,239 +71,337 @@
     {
       name: "SELECT z WHERE",
       description: "Pobierz dane spełniające warunek",
-      example: `-- Pobranie pracowników ze stanowiskiem 'Analityk'\nSELECT * FROM pracownicy WHERE stanowisko = 'Analityk';`
-    },
-    {
-      name: "SELECT z JOIN",
-      description: "Pobierz dane łącząc tabele",
-      example: `-- Pobranie pracowników i nazw działów\nSELECT p.imie, p.nazwisko, d.nazwa_dzialu FROM pracownicy p JOIN dzialy d ON p.dzial_id = d.id;`
+      example: `-- Pracownicy z działu IT\nSELECT * FROM pracownicy WHERE dzial = 'IT';`
     },
     {
       name: "SELECT DISTINCT",
       description: "Pobierz unikalne wartości",
-      example: `-- Pobranie unikalnych stanowisk\nSELECT DISTINCT stanowisko FROM pracownicy;`
+      example: `SELECT DISTINCT stanowisko FROM pracownicy;`
+    },
+    {
+      name: "SELECT z JOIN",
+      description: "Połączenie tabel",
+      example: `SELECT p.imie, d.nazwa FROM pracownicy p JOIN dzialy d ON p.dzial_id = d.id;`
     },
     {
       name: "SELECT z GROUP BY",
-      description: "Agreguj dane według kolumn",
-      example: `-- Liczba pracowników na stanowisku\nSELECT stanowisko, COUNT(*) AS liczba FROM pracownicy GROUP BY stanowisko;`
+      description: "Grupowanie wyników",
+      example: `SELECT stanowisko, COUNT(*) FROM pracownicy GROUP BY stanowisko;`
     },
     {
       name: "SELECT z ORDER BY",
-      description: "Sortuj wyniki",
-      example: `-- Pracownicy posortowani alfabetycznie\nSELECT * FROM pracownicy ORDER BY nazwisko ASC;`
+      description: "Sortowanie wyników",
+      example: `SELECT * FROM pracownicy ORDER BY nazwisko ASC;`
     },
     {
       name: "SELECT z LIMIT",
-      description: "Ogranicz liczbę wyników",
-      example: `-- Pobierz 10 pierwszych rekordów\nSELECT * FROM pracownicy LIMIT 10;`
-    },
-
-    // Operacje INSERT
-    {
-      name: "INSERT",
-      description: "Dodaj nowy rekord do tabeli",
-      example: `-- Dodanie nowego pracownika\nINSERT INTO pracownicy (imie, nazwisko, stanowisko) VALUES ('Anna', 'Nowak', 'Programista');`
+      description: "Ograniczenie liczby wyników",
+      example: `SELECT * FROM pracownicy LIMIT 10;`
     },
     {
-      name: "INSERT z SELECT",
-      description: "Dodaj rekordy na podstawie wyników zapytania",
-      example: `-- Dodanie pracowników z innej tabeli\nINSERT INTO archiwum_pracownicy SELECT * FROM pracownicy WHERE data_zwolnienia IS NOT NULL;`
+      name: "SELECT z SUBQUERY",
+      description: "Podzapytania",
+      example: `SELECT * FROM pracownicy WHERE dzial_id IN (SELECT id FROM dzialy WHERE nazwa = 'IT');`
     },
 
-    // Operacje UPDATE
+    // INSERT
+    {
+      name: "INSERT INTO",
+      description: "Dodanie nowego rekordu",
+      example: `INSERT INTO pracownicy (imie, nazwisko, dzial) VALUES ('Jan', 'Kowalski', 'Finanse');`
+    },
+    {
+      name: "INSERT SELECT",
+      description: "Dodanie na podstawie innego SELECT",
+      example: `INSERT INTO archiwum_pracownicy SELECT * FROM pracownicy WHERE data_zwolnienia IS NOT NULL;`
+    },
+
+    // UPDATE
     {
       name: "UPDATE",
-      description: "Aktualizuj dane w tabeli",
-      example: `-- Zmiana stanowiska pracownika o id=3\nUPDATE pracownicy SET stanowisko = 'Kierownik' WHERE id = 3;`
+      description: "Aktualizacja rekordów",
+      example: `UPDATE pracownicy SET dzial = 'Marketing' WHERE id = 10;`
     },
 
-    // Operacje DELETE
+    // DELETE
     {
       name: "DELETE",
-      description: "Usuń rekordy z tabeli",
-      example: `-- Usunięcie pracownika o id=10\nDELETE FROM pracownicy WHERE id = 10;`
+      description: "Usunięcie rekordów",
+      example: `DELETE FROM pracownicy WHERE id = 15;`
     },
 
-    // Operacje CREATE
+    // CREATE TABLE / VIEW / INDEX
     {
       name: "CREATE TABLE",
-      description: "Utwórz nową tabelę",
-      example: `-- Tworzenie tabeli pracownicy\nCREATE TABLE pracownicy (\n  id INT PRIMARY KEY,\n  imie VARCHAR(50),\n  nazwisko VARCHAR(50),\n  stanowisko VARCHAR(50),\n  data_zatrudnienia DATE\n);`
-    },
-    {
-      name: "CREATE INDEX",
-      description: "Utwórz indeks dla przyspieszenia wyszukiwania",
-      example: `-- Indeks na kolumnę nazwisko\nCREATE INDEX idx_nazwisko ON pracownicy (nazwisko);`
+      description: "Tworzenie tabeli",
+      example: `CREATE TABLE pracownicy (id INT PRIMARY KEY, imie VARCHAR(50), nazwisko VARCHAR(50), dzial VARCHAR(50));`
     },
     {
       name: "CREATE VIEW",
-      description: "Utwórz widok (zapytanie zapisane jako tabela)",
-      example: `-- Widok aktywnych pracowników\nCREATE VIEW aktywni_pracownicy AS SELECT * FROM pracownicy WHERE status = 'aktywny';`
+      description: "Tworzenie widoku",
+      example: `CREATE VIEW aktywni_pracownicy AS SELECT * FROM pracownicy WHERE status = 'aktywny';`
+    },
+    {
+      name: "CREATE INDEX",
+      description: "Tworzenie indeksu",
+      example: `CREATE INDEX idx_nazwisko ON pracownicy (nazwisko);`
     },
 
-    // Operacje ALTER
+    // ALTER TABLE
     {
       name: "ALTER TABLE - dodaj kolumnę",
-      description: "Dodaj nową kolumnę do tabeli",
-      example: `-- Dodanie kolumny email do pracowników\nALTER TABLE pracownicy ADD email VARCHAR(100);`
+      description: "Dodanie kolumny",
+      example: `ALTER TABLE pracownicy ADD email VARCHAR(100);`
     },
     {
       name: "ALTER TABLE - zmień typ kolumny",
-      description: "Zmień typ danych kolumny",
-      example: `-- Zmiana typu kolumny data_zatrudnienia\nALTER TABLE pracownicy ALTER COLUMN data_zatrudnienia TYPE TIMESTAMP;`
+      description: "Zmiana typu kolumny",
+      example: `ALTER TABLE pracownicy ALTER COLUMN email TYPE TEXT;`
     },
     {
       name: "ALTER TABLE - usuń kolumnę",
-      description: "Usuń kolumnę z tabeli",
-      example: `-- Usunięcie kolumny email\nALTER TABLE pracownicy DROP COLUMN email;`
+      description: "Usunięcie kolumny",
+      example: `ALTER TABLE pracownicy DROP COLUMN email;`
+    },
+    {
+      name: "ALTER TABLE - zmień nazwę kolumny",
+      description: "Zmiana nazwy kolumny",
+      example: `ALTER TABLE pracownicy RENAME COLUMN email TO kontakt_email;`
+    },
+    {
+      name: "ALTER TABLE - dodaj klucz obcy",
+      description: "Dodanie FK",
+      example: `ALTER TABLE pracownicy ADD CONSTRAINT fk_dzial FOREIGN KEY (dzial_id) REFERENCES dzialy(id);`
+    },
+    {
+      name: "ALTER TABLE - usuń klucz obcy",
+      description: "Usunięcie FK",
+      example: `ALTER TABLE pracownicy DROP CONSTRAINT fk_dzial;`
     },
 
-    // Operacje DROP
+    // DROP
     {
       name: "DROP TABLE",
-      description: "Usuń tabelę z bazy",
-      example: `-- Usunięcie tabeli archiwum_pracownicy\nDROP TABLE archiwum_pracownicy;`
-    },
-    {
-      name: "DROP INDEX",
-      description: "Usuń indeks",
-      example: `-- Usunięcie indeksu idx_nazwisko\nDROP INDEX idx_nazwisko;`
+      description: "Usunięcie tabeli",
+      example: `DROP TABLE archiwum_pracownicy;`
     },
     {
       name: "DROP VIEW",
-      description: "Usuń widok",
-      example: `-- Usunięcie widoku aktywni_pracownicy\nDROP VIEW aktywni_pracownicy;`
+      description: "Usunięcie widoku",
+      example: `DROP VIEW aktywni_pracownicy;`
+    },
+    {
+      name: "DROP INDEX",
+      description: "Usunięcie indeksu",
+      example: `DROP INDEX idx_nazwisko;`
+    },
+    {
+      name: "DROP DATABASE",
+      description: "Usunięcie bazy danych",
+      example: `DROP DATABASE moja_baza;`
     },
 
-    // Transakcje i kontrola
+    // TRANSAKCJE
     {
       name: "BEGIN TRANSACTION",
-      description: "Rozpocznij transakcję",
-      example: `-- Rozpoczęcie transakcji\nBEGIN TRANSACTION;`
+      description: "Rozpoczęcie transakcji",
+      example: `BEGIN TRANSACTION;`
     },
     {
       name: "COMMIT",
-      description: "Zatwierdź transakcję",
-      example: `-- Zatwierdzenie zmian\nCOMMIT;`
+      description: "Zatwierdzenie transakcji",
+      example: `COMMIT;`
     },
     {
       name: "ROLLBACK",
-      description: "Cofnij transakcję",
-      example: `-- Wycofanie zmian\nROLLBACK;`
+      description: "Wycofanie transakcji",
+      example: `ROLLBACK;`
     },
 
-    // Uprawnienia
+    // USER MANAGEMENT
+    {
+      name: "CREATE USER",
+      description: "Tworzenie użytkownika bazy",
+      example: `CREATE USER janusz WITH PASSWORD 'haslo123';`
+    },
+    {
+      name: "ALTER USER",
+      description: "Zmiana parametrów użytkownika",
+      example: `ALTER USER janusz WITH PASSWORD 'nowehaslo456';`
+    },
+    {
+      name: "DROP USER",
+      description: "Usunięcie użytkownika",
+      example: `DROP USER janusz;`
+    },
     {
       name: "GRANT",
-      description: "Nadaj uprawnienia użytkownikowi",
-      example: `-- Nadanie prawa SELECT na tabelę pracownicy\nGRANT SELECT ON pracownicy TO 'janek';`
+      description: "Nadanie uprawnień",
+      example: `GRANT SELECT, INSERT ON pracownicy TO janusz;`
     },
     {
       name: "REVOKE",
-      description: "Cofnij uprawnienia",
-      example: `-- Cofnięcie prawa SELECT\nREVOKE SELECT ON pracownicy FROM 'janek';`
+      description: "Cofnięcie uprawnień",
+      example: `REVOKE INSERT ON pracownicy FROM janusz;`
     },
 
-    // Backup i przywracanie (przykładowe komendy specyficzne)
+    // BACKUP / RESTORE - przykłady narzędziowe
     {
-      name: "BACKUP DATABASE",
-      description: "Backup bazy danych (syntax może się różnić w zależności od silnika)",
-      example: `-- Backup bazy danych\nBACKUP DATABASE moja_baza TO DISK = 'C:\\backup\\moja_baza.bak';`
+      name: "Backup MySQL (mysqldump)",
+      description: "Backup bazy MySQL",
+      example: `mysqldump -u user -p moja_baza > backup.sql`
     },
     {
-      name: "RESTORE DATABASE",
-      description: "Przywracanie bazy danych",
-      example: `-- Przywrócenie bazy danych\nRESTORE DATABASE moja_baza FROM DISK = 'C:\\backup\\moja_baza.bak';`
+      name: "Restore MySQL",
+      description: "Przywrócenie backupu MySQL",
+      example: `mysql -u user -p nowa_baza < backup.sql`
+    },
+    {
+      name: "Backup PostgreSQL (pg_dump)",
+      description: "Backup bazy PostgreSQL",
+      example: `pg_dump moja_baza > backup.backup`
+    },
+    {
+      name: "Restore PostgreSQL (pg_restore)",
+      description: "Przywrócenie backupu PostgreSQL",
+      example: `createdb nowa_baza\npg_restore -d nowa_baza backup.backup`
     },
 
-    // Optymalizacja i analiza
+    // COPY / CLONE / DUPLICATE TABLES
+    {
+      name: "Kopiowanie struktury tabeli (bez danych)",
+      description: "Tworzy pustą tabelę kopiując strukturę",
+      example: `CREATE TABLE pracownicy_kopia AS SELECT * FROM pracownicy WHERE 1=0;`
+    },
+    {
+      name: "Kopiowanie tabeli z danymi",
+      description: "Tworzy tabelę i kopiuje dane",
+      example: `CREATE TABLE pracownicy_kopia AS SELECT * FROM pracownicy;`
+    },
+    {
+      name: "Kopiowanie danych do istniejącej tabeli",
+      description: "Wstawia dane do istniejącej tabeli",
+      example: `INSERT INTO pracownicy_kopia SELECT * FROM pracownicy;`
+    },
+
+    // VIEW - zaawansowane
+    {
+      name: "CREATE MATERIALIZED VIEW",
+      description: "Tworzenie widoku materializowanego (np. w PostgreSQL)",
+      example: `CREATE MATERIALIZED VIEW podsumowanie_pracownikow AS SELECT dzial, COUNT(*) FROM pracownicy GROUP BY dzial;`
+    },
+    {
+      name: "REFRESH MATERIALIZED VIEW",
+      description: "Odświeżenie widoku materializowanego",
+      example: `REFRESH MATERIALIZED VIEW podsumowanie_pracownikow;`
+    },
+
+    // SYSTEMOWE i INFORMACYJNE
+    {
+      name: "SHOW TABLES",
+      description: "Wyświetla listę tabel w bazie (MySQL)",
+      example: `SHOW TABLES;`
+    },
+    {
+      name: "SHOW DATABASES",
+      description: "Wyświetla listę baz danych (MySQL)",
+      example: `SHOW DATABASES;`
+    },
+    {
+      name: "DESCRIBE TABLE",
+      description: "Opis struktury tabeli (MySQL)",
+      example: `DESCRIBE pracownicy;`
+    },
     {
       name: "EXPLAIN",
-      description: "Analiza planu zapytania",
-      example: `-- Plan wykonania zapytania\nEXPLAIN SELECT * FROM pracownicy WHERE stanowisko = 'Analityk';`
-    },
-    {
-      name: "ANALYZE",
-      description: "Zbierz statystyki optymalizatora",
-      example: `-- Analiza tabeli pracownicy\nANALYZE pracownicy;`
+      description: "Plan wykonania zapytania",
+      example: `EXPLAIN SELECT * FROM pracownicy WHERE dzial = 'IT';`
     },
 
-    // Specjalne operacje SQL
+    // TRANSAKCJE i blokady
     {
-      name: "TRUNCATE TABLE",
-      description: "Usuń wszystkie rekordy z tabeli szybciej niż DELETE",
-      example: `-- Szybkie usunięcie wszystkich danych\nTRUNCATE TABLE pracownicy;`
+      name: "LOCK TABLE",
+      description: "Blokada tabeli (np. PostgreSQL)",
+      example: `LOCK TABLE pracownicy IN ACCESS EXCLUSIVE MODE;`
+    },
+
+    // JSON / XML (dla nowoczesnych DB)
+    {
+      name: "SELECT z JSON",
+      description: "Pobieranie danych z kolumny JSON (PostgreSQL)",
+      example: `SELECT data->>'imie' AS imie FROM pracownicy_json WHERE id = 1;`
     },
     {
-      name: "CREATE PROCEDURE",
-      description: "Utwórz procedurę składowaną",
-      example: `-- Procedura dodająca pracownika\nCREATE PROCEDURE dodaj_pracownika (IN imie VARCHAR(50), IN nazwisko VARCHAR(50))\nBEGIN\n  INSERT INTO pracownicy (imie, nazwisko) VALUES (imie, nazwisko);\nEND;`
+      name: "UPDATE z JSON",
+      description: "Aktualizacja fragmentu JSON w kolumnie",
+      example: `UPDATE pracownicy_json SET data = jsonb_set(data, '{imie}', '"Janusz"') WHERE id = 1;`
+    },
+
+    // TRANSAKCJE savepoints
+    {
+      name: "SAVEPOINT",
+      description: "Utworzenie savepointu w transakcji",
+      example: `SAVEPOINT przed_aktualizacja;`
     },
     {
-      name: "EXECUTE PROCEDURE",
-      description: "Wywołaj procedurę składowaną",
-      example: `-- Wywołanie procedury\nCALL dodaj_pracownika('Maria', 'Kowalczyk');`
+      name: "ROLLBACK TO SAVEPOINT",
+      description: "Cofnięcie do savepointu",
+      example: `ROLLBACK TO SAVEPOINT przed_aktualizacja;`
     },
+
+    // COMMIT / ROLLBACK już wyżej
+
+    // GRANT - różne poziomy
+    {
+      name: "GRANT ALL PRIVILEGES",
+      description: "Nadanie wszystkich uprawnień na bazę",
+      example: `GRANT ALL PRIVILEGES ON DATABASE moja_baza TO janusz;`
+    },
+
+    // REVOKE analogicznie
+
   ];
 
   const input = document.getElementById('queryInput');
   const suggestions = document.getElementById('suggestions');
   const output = document.getElementById('commandOutput');
 
-  function updateSuggestions() {
-    const text = input.value.toLowerCase().trim();
+  // Wypełnij początkowo wszystkie komendy
+  function fillSuggestions(list) {
     suggestions.innerHTML = '';
-
-    if(text.length === 0) {
-      output.textContent = 'Wybierz komendę z listy powyżej, aby zobaczyć przykład.';
-      return;
-    }
-
-    const filtered = commands.filter(cmd =>
-      cmd.name.toLowerCase().includes(text) ||
-      cmd.description.toLowerCase().includes(text)
-    );
-
-    if(filtered.length === 0) {
-      suggestions.innerHTML = '<option disabled>Brak dopasowań</option>';
-      output.textContent = 'Brak komendy pasującej do wpisanego zapytania.';
-      return;
-    }
-
-    filtered.forEach((cmd, i) => {
+    for (const cmd of list) {
       const option = document.createElement('option');
-      option.value = i;
-      option.textContent = `${cmd.name} - ${cmd.description}`;
+      option.textContent = cmd.name + " — " + cmd.description;
+      option.value = cmd.name;
       suggestions.appendChild(option);
-    });
-
-    suggestions.selectedIndex = 0;
-    showExample(filtered[0]);
-  }
-
-  function showExample(cmd) {
-    output.textContent = cmd.example;
-  }
-
-  suggestions.addEventListener('change', () => {
-    const idx = suggestions.selectedIndex;
-    if(idx < 0) return;
-
-    const text = input.value.toLowerCase().trim();
-    const filtered = commands.filter(cmd =>
-      cmd.name.toLowerCase().includes(text) ||
-      cmd.description.toLowerCase().includes(text)
-    );
-
-    if(filtered.length > 0) {
-      showExample(filtered[idx]);
     }
+  }
+
+  // Filtruj wg wpisanego tekstu
+  input.addEventListener('input', () => {
+    const text = input.value.toLowerCase();
+    if (!text) {
+      fillSuggestions(commands);
+      output.textContent = "Wybierz komendę z listy powyżej, aby zobaczyć przykład.";
+      return;
+    }
+    const filtered = commands.filter(c =>
+      c.name.toLowerCase().includes(text) || c.description.toLowerCase().includes(text)
+    );
+    fillSuggestions(filtered);
+    output.textContent = filtered.length === 0 ? "Brak pasujących komend." : "Wybierz komendę z listy powyżej.";
   });
 
-  input.addEventListener('input', updateSuggestions);
+  // Po wybraniu komendy pokaż przykład
+  suggestions.addEventListener('change', () => {
+    const selected = suggestions.value;
+    const cmd = commands.find(c => c.name === selected);
+    output.textContent = cmd ? cmd.example : "";
+  });
 
-  updateSuggestions();
+  // Startowo pokaż wszystkie
+  fillSuggestions(commands);
+
 </script>
 
 </body>
